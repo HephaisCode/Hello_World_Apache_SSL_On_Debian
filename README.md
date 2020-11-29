@@ -105,11 +105,33 @@ a2ensite 000-default.conf
 
 systemctl restart apache2
 
+openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout /var/www/ssl/apache.key -out /var/www/ssl/apache.crt -subj "/C=FR/ST=KNOWHERE/L=KNOWHERE/O=Global Security/OU=IT Department/CN=Apache"
+
+rm /etc/apache2/sites-available/000-default-le-ssl.conf
+echo '<IfModule mod_ssl.c>' >> /etc/apache2/sites-available/000-default-le-ssl.conf
+echo '<VirtualHost *:443>' >> /etc/apache2/sites-available/000-default-le-ssl.conf
+echo 'ServerAdmin webmaster@localhost' >> /etc/apache2/sites-available/000-default-le-ssl.conf
+echo 'DocumentRoot /var/www/html' >> /etc/apache2/sites-available/000-default-le-ssl.conf
+echo 'ErrorLog ${APACHE_LOG_DIR}/error.log' >> /etc/apache2/sites-available/000-default-le-ssl.conf
+echo 'CustomLog ${APACHE_LOG_DIR}/access.log combined' >> /etc/apache2/sites-available/000-default-le-ssl.conf
+echo "SSLEngine On" /etc/apache2/sites-available/000-default-le-ssl.conf
+echo 'SSLCipherSuite ALL:!DH:!EXPORT:!RC4:+HIGH:+MEDIUM:!LOW:!aNULL:!eNULL' >> /etc/apache2/sites-available/000-default-le-ssl.conf
+echo "SSLCertificateFile /var/www/ssl/apache.crt" >> /etc/apache2/sites-available/000-default-le-ssl.conf
+echo "SSLCertificateKeyFile /var/www/ssl/apache.key" >> /etc/apache2/sites-available/000-default-le-ssl.conf
+echo '</VirtualHost>' >> /etc/apache2/sites-available/000-default-le-ssl.conf
+echo '</IfModule>' >> /etc/apache2/sites-available/000-default-le-ssl.conf
+
+a2ensite 000-default-le-ssl.conf
+
+systemctl restart apache2
+
 ```
 
 Test Apache 
 
 Open browser and go to page http://51.83.45.10/
+
+Open browser and go to page https://51.83.45.10/
 
  ## Define our parameters
  
