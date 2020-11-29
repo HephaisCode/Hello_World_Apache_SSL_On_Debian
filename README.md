@@ -1,7 +1,7 @@
-# Hello World Apache and SSL On Debian
+# "Hello World!" with Apache PHP and Cerbot on Debian 10
+
 [![OS badge](https://img.shields.io/badge/OS-Debian-red.svg)](https://www.debian.org)
 [![Server badge](https://img.shields.io/badge/Server-Apache-blue.svg)](https://httpd.apache.org)
-[![SSL badge](https://img.shields.io/badge/SSL-certbot-blue.svg)](https://httpd.apache.org)
 [![Format badge](https://img.shields.io/badge/Format-HTML-green.svg)](https://lyty.dev/html/index.html)
 
 ## Objectif 
@@ -19,13 +19,15 @@ Create page HTML for **hello-world.hephaiscode.com** with Apache and HTML File
 We use :
  - hello-world.hephaiscode.com for domain name of our web page
  - 51.83.45.10 the IP address of our server computer
+ - Create an user hephaistos with password 'Gkh23hglxVd47ShG43jh3h' (change the password!)
  
-
+ 
 ## Connect to server 
 
 Open terminal or console and go to admin your server.
 
 ```
+ssh-keygen -R 51.83.45.10
 ssh -l root 51.83.45.10 
 ```
 
@@ -39,11 +41,12 @@ Always to be update.
 apt-get update
 apt-get -y upgrade
 apt-get -y dist-upgrade
+
 ```
 
 ## Install Apache
 
-Install Apache as WebServer to communicate with your server at **hello-world.hephaiscode.com **
+Install Apache as WebServer to communicate with your server at **hello-world.hephaiscode.com**
 
 ```
 apt-get -y install apache2
@@ -51,7 +54,112 @@ apt-get -y install apache2-doc
 apt-get -y install apache2-suexec-custom
 apt-get -y install logrotate
 apt-get -y install openssl
+
 systemctl restart apache2
+
+```
+
+Active Apache modules
+
+```
+a2enmod ssl
+a2enmod userdir
+a2enmod suexec
+a2enmod http2
+
+systemctl restart apache2
+
+```
+
+Configure Apache
+
+```
+sed -i 's/\/var\/www/\/home/g' /etc/apache2/suexec/www-data
+sed -i 's/^.*ServerSignature .*$//g' /etc/apache2/apache2.conf
+sed -i '$ a ServerSignature Off' /etc/apache2/apache2.conf
+sed -i 's/^.*SSLProtocol .*$//g' /etc/apache2/apache2.conf
+sed -i '$ a SSLProtocol all -SSLv2 -SSLv3 -TLSv1 -TLSv1.1' /etc/apache2/apache2.conf
+
+systemctl restart apache2
+
+```
+
+Configure Default Apache by rewrite virtualhost
+
+```
+chgrp -R www-data /var/www/html/
+chmod 750 /var/www/html/
+
+rm /var/www/html/index.html
+echo "<html><body>Are you lost? Ok, I'll help you, you're in front of a screen...</body></html>" > /var/www/html/index.html
+
+rm /etc/apache2/sites-available/000-default.conf
+echo '<VirtualHost *:80>' >> /etc/apache2/sites-available/000-default.conf
+echo 'ServerAdmin webmaster@localhost' >> /etc/apache2/sites-available/000-default.conf
+echo 'DocumentRoot /var/www/html' >> /etc/apache2/sites-available/000-default.conf
+echo 'ErrorLog ${APACHE_LOG_DIR}/error.log' >> /etc/apache2/sites-available/000-default.conf
+echo 'CustomLog ${APACHE_LOG_DIR}/access.log combined' >> /etc/apache2/sites-available/000-default.conf
+echo '</VirtualHost>' >> /etc/apache2/sites-available/000-default.conf
+
+a2ensite 000-default.conf
+
+systemctl restart apache2
+
+```
+
+Test Apache 
+
+Open browser and go to page http://51.83.45.10/
+
+ ## Define our parameters
+ 
+ ```
+ MYUSER=hephaistos
+ MYPASSWORD=Gkh23hglxVd47ShG43jh3h
+ MYDOMAINNAME=hello-world.hephaiscode.com
+ MYEMAIL=hello-world@hephaiscode.com
+ MYWEBFOLDER=WebSite
+ ```
+ 
+ ## Create user ${MYUSER}
+ 
+ ```
+useradd --shell /bin/false ${MYUSER}
+echo ${MYUSER}:${MYPASSWORD} | chpasswd
+mkdir /home/${MYUSER}
+chown root /home/${MYUSER}
+chmod go-w /home/${MYUSER}
+
+```
+
+Add directories
+
+```
+mkdir /home/${MYUSER}/
+
+mkdir /home/${MYUSER}/${MYWEBFOLDER}_NOSSL
+
+rm /home/${MYUSER}/${MYWEBFOLDER}_NOSSL/index.html
+echo '<html><body>Hello World! You are NOT secure! Please use <a href="https://hello-world.hephaiscode.com">SSL connexion</a>!</body></html>' >> /home/${MYUSER}/${MYWEBFOLDER}_NOSSL/index.html
+
+chown -R ${MYUSER}:www-data /home/${MYUSER}/${MYWEBFOLDER}_NOSSL
+chmod -R 750 /home/${MYUSER}/${MYWEBFOLDER}_NOSSL
+
+mkdir /home/${MYUSER}/ssl
+
+openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout /home/${MYUSER}/ssl/${MYDOMAINNAME}.key -out /home/${MYUSER}/ssl/${MYDOMAINNAME}.crt -subj "/C=FR/ST=KNOWHERE/L=KNOWHERE/O=Global Security/OU=IT Department/CN=${MYDOMAINNAME}"
+
+chown -R ${MYUSER}:www-data /home/${MYUSER}/ssl
+chmod -R 750 /home/${MYUSER}/ssl
+
+mkdir /home/${MYUSER}/${MYWEBFOLDER}_SSL
+
+rm /home/${MYUSER}/${MYWEBFOLDER}_SSL/index.html
+echo '<html><body>Hello World! You are secure!</body></html>' >> /home/${MYUSER}/${MYWEBFOLDER}_SSL/index.html
+
+chown -R ${MYUSER}:www-data /home/${MYUSER}/${MYWEBFOLDER}_SSL
+chmod -R 750 /home/${MYUSER}/${MYWEBFOLDER}_SSL
+
 ```
 
 ## Install Domain Name
@@ -59,83 +167,70 @@ systemctl restart apache2
 Create the host parameters for Apache and our domains **hello-world.hephaiscode.com**
 
 ```
-mkdir /home/helloworld
-rm /etc/apache2/sites-available/helloworld_ws.conf
-echo "<VirtualHost *:80>" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "Protocols h2 http/1.1" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "ServerAdmin contact@helloworld.io" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "ServerName hello-world.hephaiscode.com" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "ServerAlias hello-world.hephaiscode.com" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "DocumentRoot /home/helloworld" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "<Directory />" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "AllowOverride All" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "</Directory>" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "<Directory /home/helloworld>" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "Options Indexes FollowSymLinks MultiViews" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "AllowOverride all" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "Require all granted" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "</Directory>" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "LogLevel error" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "ErrorLog /var/log/apache2/helloworld-error.log" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "CustomLog /var/log/apache2/helloworld-ssl-access.log combined env=NoLog" >> /etc/apache2/sites-available/helloworld_ws.conf
-echo "</VirtualHost>" >> /etc/apache2/sites-available/helloworld_ws.conf
-a2ensite helloworld_ws.conf
+MYAPACHECONFNOSSL=/etc/apache2/sites-available/${MYDOMAINNAME}_NOSSL.conf
+rm ${MYAPACHECONFNOSSL}
+echo "<VirtualHost *:80>" >> ${MYAPACHECONFNOSSL}
+echo "Protocols h2 http/1.1" >> ${MYAPACHECONFNOSSL}
+echo "ServerAdmin ${MYEMAIL}" >> ${MYAPACHECONFNOSSL}
+echo "ServerName ${MYDOMAINNAME}" >> ${MYAPACHECONFNOSSL}
+echo "ServerAlias ${MYDOMAINNAME}" >> ${MYAPACHECONFNOSSL}
+echo "DocumentRoot /home/${MYUSER}/${MYWEBFOLDER}_NOSSL" >> ${MYAPACHECONFNOSSL}
+echo "<Directory />" >> ${MYAPACHECONFNOSSL}
+echo "AllowOverride All" >> ${MYAPACHECONFNOSSL}
+echo "</Directory>" >> ${MYAPACHECONFNOSSL}
+echo "<Directory /home/${MYUSER}/${MYWEBFOLDER}_NOSSL>" >> ${MYAPACHECONFNOSSL}
+echo "Options Indexes FollowSymLinks MultiViews" >> ${MYAPACHECONFNOSSL}
+echo "AllowOverride all" >> ${MYAPACHECONFNOSSL}
+echo "Require all granted" >> ${MYAPACHECONFNOSSL}
+echo "</Directory>" >> ${MYAPACHECONFNOSSL}
+echo "LogLevel error" >> ${MYAPACHECONFNOSSL}
+echo "ErrorLog /var/log/apache2/${MYDOMAINNAME}-nossl-error.log" >> ${MYAPACHECONFNOSSL}
+echo "CustomLog /var/log/apache2/${MYDOMAINNAME}-nossl-access.log combined env=NoLog" >> ${MYAPACHECONFNOSSL}
+echo "</VirtualHost>" >> ${MYAPACHECONFNOSSL}
 
+a2ensite ${MYDOMAINNAME}_NOSSL.conf
 
-// create virtual host with SSL
-rm /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "echo \"<IfModule mod_ssl.c>\" >> /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a <VirtualHost *:443>' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a Protocols h2 http/1.1' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a ServerAdmin " + Email + "' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a ServerName " + tServerDomain.ServerDNS + "' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a ServerAlias " + tServerDomain.ServerDNS+ "' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a DocumentRoot /home/" + User + "/" + Folder  + _SSL+ "' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a <Directory />' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a AllowOverride All' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a </Directory>' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a <Directory /home/" + User + "/" + Folder  + _SSL+ ">' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a Options Indexes FollowSymLinks MultiViews' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a AllowOverride all' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a Require all granted' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a </Directory>' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a LogLevel error' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a ErrorLog /var/log/apache2/" + tServerDomain.ServerDNS + "-error.log' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a CustomLog /var/log/apache2/" + tServerDomain.ServerDNS + "-ssl-access.log combined env=NoLog' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a SSLEngine On' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a SSLCipherSuite ALL:!DH:!EXPORT:!RC4:+HIGH:+MEDIUM:!LOW:!aNULL:!eNULL' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a SSLCertificateFile /home/" + User + "/ssl/" + tServerDomain.ServerDNS + ".crt' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a SSLCertificateKeyFile /home/" + User + "/ssl/" + tServerDomain.ServerDNS + ".key' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a </VirtualHost>' > /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "sed -i '$ a </IfModule>'> /etc/apache2/sites-available/helloworld_ssl_ws.conf
-                "a2ensite " + tServerDomain.ServerDNS + _SSL +"_ws.conf",
-                
-                
-                
 systemctl restart apache2
+
+MYAPACHECONFSSL=/etc/apache2/sites-available/${MYDOMAINNAME}_SSL.conf
+rm ${MYAPACHECONFSSL}
+echo "<IfModule mod_ssl.c>" >> ${MYAPACHECONFSSL}
+echo "<VirtualHost *:80>" >> ${MYAPACHECONFSSL}
+echo "Protocols h2 http/1.1" >> ${MYAPACHECONFSSL}
+echo "ServerAdmin ${MYEMAIL}" >> ${MYAPACHECONFSSL}
+echo "ServerName ${MYDOMAINNAME}" >> ${MYAPACHECONFSSL}
+echo "ServerAlias ${MYDOMAINNAME}" >> ${MYAPACHECONFSSL}
+echo "DocumentRoot /home/${MYUSER}/${MYWEBFOLDER}_SSL" >> ${MYAPACHECONFSSL}
+echo "<Directory />" >> ${MYAPACHECONFSSL}
+echo "AllowOverride All" >> ${MYAPACHECONFSSL}
+echo "</Directory>" >> ${MYAPACHECONFSSL}
+echo "<Directory /home/${MYUSER}/${MYWEBFOLDER}_SSL>" >> ${MYAPACHECONFSSL}
+echo "Options Indexes FollowSymLinks MultiViews" >> ${MYAPACHECONFSSL}
+echo "AllowOverride all" >> ${MYAPACHECONFSSL}
+echo "Require all granted" >> ${MYAPACHECONFSSL}
+echo "</Directory>" >> ${MYAPACHECONFSSL}
+echo "LogLevel error" >> ${MYAPACHECONFSSL}
+echo "ErrorLog /var/log/apache2/${MYDOMAINNAME}-ssl-error.log" >> ${MYAPACHECONFSSL}
+echo "CustomLog /var/log/apache2/${MYDOMAINNAME}-ssl-access.log combined env=NoLog" >> ${MYAPACHECONFSSL}
+echo "SSLEngine On" >> ${MYAPACHECONFSSL}
+echo 'SSLCipherSuite ALL:!DH:!EXPORT:!RC4:+HIGH:+MEDIUM:!LOW:!aNULL:!eNULL' >> ${MYAPACHECONFSSL}
+echo "SSLCertificateFile /home/${MYUSER}/ssl/${MYDOMAINNAME}.crt" >> ${MYAPACHECONFSSL}
+echo "SSLCertificateKeyFile /home/${MYUSER}/ssl/${MYDOMAINNAME}.key" >> ${MYAPACHECONFSSL}
+echo "</VirtualHost>" >> ${MYAPACHECONFSSL}
+echo "</IfModule>" >> ${MYAPACHECONFSSL}
+
+a2ensite ${MYDOMAINNAME}_SSL.conf
+
+systemctl restart apache2
+
 ```
 
-## Install Certboot for automatic SSL
-```
-apt-get -y install certbot python-certbot-apache
-certbot --agree-tos -n --no-eff-email --apache --redirect --email ${MYEMAIL} -d ${MYDOMAINNAME}
-```
+## Hello World Test
 
-## File Script
-Write root's file in HTML. The name is index.html
-```
-rm /home/helloworld/index.html
-echo '<html><body>Hello World!</body></html>' >> /home/helloworld/index.html
-```
+Open browser and go to page http://hello-world.hephaiscode.com 
 
-## Test your SSL certficate 
-
-https://www.ssllabs.com/ssltest/analyze.html?d=hello-world.hephaiscode.com
-
+Open browser and go to page https://hello-world.hephaiscode.com (certificat is valided by certbot)
 
 ## Hello World Success
-
-Open browser and go to page https://hello-world.hephaiscode.com 
-
 
 ![Success](https://img.shields.io/badge/Hello%20World-OK-Green.svg)
