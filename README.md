@@ -1,4 +1,4 @@
-# "Hello World!" with Apache PHP and Cerbot on Debian 10
+# "Hello World!" with Apache SSL on Debian 10
 
 [![OS badge](https://img.shields.io/badge/OS-Debian-red.svg)](https://www.debian.org)
 [![Server badge](https://img.shields.io/badge/Server-Apache-blue.svg)](https://httpd.apache.org)
@@ -229,7 +229,7 @@ systemctl restart apache2
 
 Open browser and go to page http://hello-world.hephaiscode.com 
 
-Open browser and go to page https://hello-world.hephaiscode.com (certificat is valided by certbot)
+Open browser and go to page https://hello-world.hephaiscode.com (auto certificate by apache)
 
 ## Hello World Success
 
