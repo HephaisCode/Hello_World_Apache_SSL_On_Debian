@@ -118,7 +118,7 @@ systemctl restart apache2
 ## Install Certboot for automatic SSL
 ```
 apt-get -y install certbot python-certbot-apache
-certbot --agree-tos -n --no-eff-email --apache --redirect --email contact@hephaiscode.com -d hello-world.hephaiscode.com
+certbot --agree-tos -n --no-eff-email --apache --redirect --email ${MYEMAIL} -d ${MYDOMAINNAME}
 ```
 
 ## File Script
